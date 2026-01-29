@@ -424,7 +424,7 @@
         const SUPABASE_URL = 'https://hdyjmvomalcahvhsrdqd.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkeWptdm9tYWxjYWh2aHNyZHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjIxMDYsImV4cCI6MjA4NTI5ODEwNn0.viMiML27OgyqFC7W-SFBDBrt5sRlSxue-oFImSfCnxk';
         
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // Time slots: 8 AM to 10 PM in 1-hour increments
         const timeSlots = [
@@ -454,6 +454,8 @@
 
         async function loadBookings() {
             try {
+                console.log('Starting to load bookings...');
+                
                 // Get bookings for the current month and next month
                 const startDate = new Date(currentCalendarMonth);
                 startDate.setDate(1);
@@ -461,37 +463,56 @@
                 endDate.setMonth(endDate.getMonth() + 2);
                 endDate.setDate(0);
 
-                const { data, error } = await supabase
+                console.log('Fetching bookings from', startDate.toISOString().split('T')[0], 'to', endDate.toISOString().split('T')[0]);
+
+                const { data, error } = await supabaseClient
                     .from('bookings')
                     .select('*')
                     .gte('booking_date', startDate.toISOString().split('T')[0])
                     .lte('booking_date', endDate.toISOString().split('T')[0]);
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase error:', error);
+                    throw error;
+                }
+
+                console.log('Bookings loaded successfully:', data);
 
                 // Organize bookings by date
                 allBookings = {};
-                data.forEach(booking => {
-                    const date = booking.booking_date;
-                    const slotKey = `${booking.start_time}-${booking.end_time}`;
-                    
-                    if (!allBookings[date]) {
-                        allBookings[date] = {};
-                    }
-                    
-                    allBookings[date][slotKey] = {
-                        id: booking.id,
-                        memberName: booking.member_name,
-                        duration: booking.duration,
-                        bookedAt: booking.created_at
-                    };
-                });
+                if (data && data.length > 0) {
+                    data.forEach(booking => {
+                        const date = booking.booking_date;
+                        const slotKey = `${booking.start_time}-${booking.end_time}`;
+                        
+                        if (!allBookings[date]) {
+                            allBookings[date] = {};
+                        }
+                        
+                        allBookings[date][slotKey] = {
+                            id: booking.id,
+                            memberName: booking.member_name,
+                            duration: booking.duration,
+                            bookedAt: booking.created_at
+                        };
+                    });
+                }
 
+                console.log('Organized bookings:', allBookings);
                 renderCalendar();
                 renderTimeSlots();
             } catch (error) {
                 console.error('Error loading bookings:', error);
-                alert('Error loading bookings. Please refresh the page.');
+                const alertsContainer = document.getElementById('alerts');
+                alertsContainer.innerHTML = `
+                    <div class="alert alert-warning">
+                        ⚠️ Error loading bookings: ${error.message}<br>
+                        Please check the browser console for details.
+                    </div>
+                `;
+                // Still render the calendar and time slots even if there's an error
+                renderCalendar();
+                renderTimeSlots();
             }
         }
 
@@ -759,7 +780,7 @@
             }
 
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('bookings')
                     .insert([
                         {
@@ -789,7 +810,7 @@
             }
 
             try {
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('bookings')
                     .delete()
                     .eq('id', bookingId);
