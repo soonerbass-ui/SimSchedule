@@ -941,6 +941,46 @@
             }
 
             try {
+                // First, check if this slot is already booked
+                const { data: existingBookings, error: checkError } = await supabaseClient
+                    .from('bookings')
+                    .select('*')
+                    .eq('booking_date', currentDate)
+                    .eq('start_time', selectedSlot.start)
+                    .eq('end_time', endTime);
+
+                if (checkError) throw checkError;
+
+                if (existingBookings && existingBookings.length > 0) {
+                    alert('Sorry, this time slot was just booked by someone else! Please select a different time.');
+                    closeBookingModal();
+                    await loadBookings();
+                    renderTimeSlots();
+                    return;
+                }
+
+                // If 2-hour booking, also check the next hour slot
+                if (duration === 2) {
+                    const nextSlot = timeSlots[selectedSlot.index + 1];
+                    const { data: nextSlotBookings, error: nextCheckError } = await supabaseClient
+                        .from('bookings')
+                        .select('*')
+                        .eq('booking_date', currentDate)
+                        .eq('start_time', nextSlot.start)
+                        .eq('end_time', nextSlot.end);
+
+                    if (nextCheckError) throw nextCheckError;
+
+                    if (nextSlotBookings && nextSlotBookings.length > 0) {
+                        alert('Sorry, the second hour of this slot was just booked! Please select a different time.');
+                        closeBookingModal();
+                        await loadBookings();
+                        renderTimeSlots();
+                        return;
+                    }
+                }
+
+                // Proceed with booking
                 const { data, error } = await supabaseClient
                     .from('bookings')
                     .insert([
@@ -953,7 +993,17 @@
                         }
                     ]);
 
-                if (error) throw error;
+                if (error) {
+                    // Check if it's a unique constraint violation
+                    if (error.code === '23505') {
+                        alert('Sorry, this time slot was just booked by someone else! Please select a different time.');
+                        closeBookingModal();
+                        await loadBookings();
+                        renderTimeSlots();
+                        return;
+                    }
+                    throw error;
+                }
 
                 localStorage.setItem('lastMemberName', memberName);
                 
