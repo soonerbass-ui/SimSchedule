@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TK's Tavern Sim Booking</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2d5016 0%, #4a7c2c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .calendar-section {
+            margin-bottom: 30px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .calendar-header h2 {
+            color: #333;
+            font-size: 1.3em;
+        }
+
+        .calendar-nav {
+            display: flex;
+            gap: 10px;
+        }
+
+        .calendar-nav button {
+            padding: 8px 16px;
+            border: none;
+            background: #4a7c2c;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .calendar-nav button:hover {
+            background: #3d6824;
+        }
+
+        .calendar-nav button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .calendar-day-header {
+            text-align: center;
+            font-weight: 600;
+            padding: 10px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: white;
+            font-weight: 600;
+            position: relative;
+        }
+
+        .calendar-day:hover:not(.disabled):not(.closed) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-color: #4a7c2c;
+        }
+
+        .calendar-day.today {
+            border-color: #2196F3;
+            color: #2196F3;
+        }
+
+        .calendar-day.selected {
+            background: #4a7c2c;
+            color: white;
+            border-color: #4a7c2c;
+        }
+
+        .calendar-day.disabled {
+            background: #f5f5f5;
+            color: #ccc;
+            cursor: not-allowed;
+            border-color: #f0f0f0;
+        }
+
+        .calendar-day.closed {
+            background: #fff3f3;
+            color: #d32f2f;
+            cursor: not-allowed;
+            border-color: #ffcdd2;
+        }
+
+        .calendar-day.other-month {
+            opacity: 0.3;
+        }
+
+        .calendar-day.has-booking::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            width: 6px;
+            height: 6px;
+            background: #4a7c2c;
+            border-radius: 50%;
+        }
+
+        .calendar-day.selected.has-booking::after {
+            background: white;
+        }
+
+        .date-selector {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .time-slots {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .time-slot {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            background: white;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .time-slot:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .time-slot.available {
+            border-color: #4a7c2c;
+        }
+
+        .time-slot.available:hover {
+            background: #f0f7ed;
+            border-color: #3d6824;
+        }
+
+        .time-slot.booked {
+            background: #fff3f3;
+            border-color: #e57373;
+            cursor: default;
+        }
+
+        .time-slot.my-booking {
+            background: #e8f5e9;
+            border-color: #4a7c2c;
+        }
+
+        .time-header {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .time-slot.available .time-header {
+            color: #4a7c2c;
+        }
+
+        .time-slot.booked .time-header {
+            color: #d32f2f;
+        }
+
+        .slot-status {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .booked-by {
+            font-size: 0.85em;
+            color: #999;
+            font-style: italic;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .btn-book {
+            background: #4a7c2c;
+            color: white;
+        }
+
+        .btn-book:hover {
+            background: #3d6824;
+        }
+
+        .btn-cancel {
+            background: #d32f2f;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background: #b71c1c;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .modal-content input, .modal-content select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-buttons .btn {
+            margin-top: 0;
+        }
+
+        .btn-secondary {
+            background: #757575;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #616161;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            border: 1px solid #17a2b8;
+            color: #0c5460;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏌️ TK's Tavern Sim Booking</h1>
+            <p>Book your simulator session (1 or 2 hours max)</p>
+        </div>
+
+        <div class="content">
+            <div class="calendar-section">
+                <div class="calendar-header">
+                    <h2 id="calendar-month-year"></h2>
+                    <div class="calendar-nav">
+                        <button id="prev-month" onclick="changeMonth(-1)">← Prev</button>
+                        <button id="next-month" onclick="changeMonth(1)">Next →</button>
+                    </div>
+                </div>
+                <div class="calendar-grid">
+                    <div class="calendar-day-header">Sun</div>
+                    <div class="calendar-day-header">Mon</div>
+                    <div class="calendar-day-header">Tue</div>
+                    <div class="calendar-day-header">Wed</div>
+                    <div class="calendar-day-header">Thu</div>
+                    <div class="calendar-day-header">Fri</div>
+                    <div class="calendar-day-header">Sat</div>
+                    <div id="calendar-days"></div>
+                </div>
+            </div>
+
+            <div id="alerts"></div>
+
+            <div class="time-slots" id="time-slots">
+                <div class="loading">Loading time slots</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Modal -->
+    <div class="modal" id="booking-modal">
+        <div class="modal-content">
+            <h2>Book Simulator Time</h2>
+            <p id="modal-time-info"></p>
+            <label for="duration-select" style="display: block; margin-bottom: 10px; font-weight: 600;">Duration:</label>
+            <select id="duration-select">
+                <option value="1">1 Hour</option>
+                <option value="2">2 Hours</option>
+            </select>
+            <input type="text" id="member-name" placeholder="Enter your name">
+            <div class="modal-buttons">
+                <button class="btn btn-book" onclick="confirmBooking()">Confirm Booking</button>
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+        // Initialize Supabase
+        const SUPABASE_URL = 'https://hdyjmvomalcahvhsrdqd.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkeWptdm9tYWxjYWh2aHNyZHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjIxMDYsImV4cCI6MjA4NTI5ODEwNn0.viMiML27OgyqFC7W-SFBDBrt5sRlSxue-oFImSfCnxk';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Time slots: 8 AM to 10 PM in 1-hour increments
+        const timeSlots = [
+            { start: "08:00", end: "09:00", label: "8:00 AM - 9:00 AM" },
+            { start: "09:00", end: "10:00", label: "9:00 AM - 10:00 AM" },
+            { start: "10:00", end: "11:00", label: "10:00 AM - 11:00 AM" },
+            { start: "11:00", end: "12:00", label: "11:00 AM - 12:00 PM" },
+            { start: "12:00", end: "13:00", label: "12:00 PM - 1:00 PM" },
+            { start: "13:00", end: "14:00", label: "1:00 PM - 2:00 PM" },
+            { start: "14:00", end: "15:00", label: "2:00 PM - 3:00 PM" },
+            { start: "15:00", end: "16:00", label: "3:00 PM - 4:00 PM" },
+            { start: "16:00", end: "17:00", label: "4:00 PM - 5:00 PM" },
+            { start: "17:00", end: "18:00", label: "5:00 PM - 6:00 PM" },
+            { start: "18:00", end: "19:00", label: "6:00 PM - 7:00 PM" },
+            { start: "19:00", end: "20:00", label: "7:00 PM - 8:00 PM" },
+            { start: "20:00", end: "21:00", label: "8:00 PM - 9:00 PM" },
+            { start: "21:00", end: "22:00", label: "9:00 PM - 10:00 PM" }
+        ];
+
+        let currentDate = new Date().toISOString().split('T')[0];
+        let currentCalendarMonth = new Date();
+        let selectedSlot = null;
+        let allBookings = {};
+
+        // Initialize
+        loadBookings();
+
+        async function loadBookings() {
+            try {
+                // Get bookings for the current month and next month
+                const startDate = new Date(currentCalendarMonth);
+                startDate.setDate(1);
+                const endDate = new Date(currentCalendarMonth);
+                endDate.setMonth(endDate.getMonth() + 2);
+                endDate.setDate(0);
+
+                const { data, error } = await supabase
+                    .from('bookings')
+                    .select('*')
+                    .gte('booking_date', startDate.toISOString().split('T')[0])
+                    .lte('booking_date', endDate.toISOString().split('T')[0]);
+
+                if (error) throw error;
+
+                // Organize bookings by date
+                allBookings = {};
+                data.forEach(booking => {
+                    const date = booking.booking_date;
+                    const slotKey = `${booking.start_time}-${booking.end_time}`;
+                    
+                    if (!allBookings[date]) {
+                        allBookings[date] = {};
+                    }
+                    
+                    allBookings[date][slotKey] = {
+                        id: booking.id,
+                        memberName: booking.member_name,
+                        duration: booking.duration,
+                        bookedAt: booking.created_at
+                    };
+                });
+
+                renderCalendar();
+                renderTimeSlots();
+            } catch (error) {
+                console.error('Error loading bookings:', error);
+                alert('Error loading bookings. Please refresh the page.');
+            }
+        }
+
+        function getMaxBookingDate() {
+            const today = new Date();
+            const maxDate = new Date(today);
+            maxDate.setDate(maxDate.getDate() + 7);
+            return maxDate;
+        }
+
+        function isMonday(date) {
+            return new Date(date).getDay() === 1;
+        }
+
+        function isDateBookable(dateStr) {
+            const date = new Date(dateStr);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const maxDate = getMaxBookingDate();
+            
+            if (date < today) return false;
+            if (date > maxDate) return false;
+            if (isMonday(dateStr)) return false;
+            
+            return true;
+        }
+
+        function renderCalendar() {
+            const year = currentCalendarMonth.getFullYear();
+            const month = currentCalendarMonth.getMonth();
+            
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            document.getElementById('calendar-month-year').textContent = 
+                `${monthNames[month]} ${year}`;
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDayOfWeek = firstDay.getDay();
+            
+            const prevMonthLastDay = new Date(year, month, 0).getDate();
+            
+            const calendarDays = document.getElementById('calendar-days');
+            calendarDays.innerHTML = '';
+            
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const maxDate = getMaxBookingDate();
+            
+            // Add previous month's days
+            for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+                const day = prevMonthLastDay - i;
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day other-month disabled';
+                dayDiv.textContent = day;
+                calendarDays.appendChild(dayDiv);
+            }
+            
+            // Add current month's days
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dateStr = date.toISOString().split('T')[0];
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day';
+                dayDiv.textContent = day;
+                
+                if (dateStr === new Date().toISOString().split('T')[0]) {
+                    dayDiv.classList.add('today');
+                }
+                
+                if (dateStr === currentDate) {
+                    dayDiv.classList.add('selected');
+                }
+                
+                if (allBookings[dateStr] && Object.keys(allBookings[dateStr]).length > 0) {
+                    dayDiv.classList.add('has-booking');
+                }
+                
+                if (date.getDay() === 1) {
+                    dayDiv.classList.add('closed');
+                    dayDiv.title = 'Closed on Mondays';
+                } else if (date < today || date > maxDate) {
+                    dayDiv.classList.add('disabled');
+                    if (date > maxDate) {
+                        dayDiv.title = 'Can only book 1 week in advance';
+                    }
+                } else {
+                    dayDiv.onclick = () => selectDate(dateStr);
+                    dayDiv.style.cursor = 'pointer';
+                }
+                
+                calendarDays.appendChild(dayDiv);
+            }
+            
+            // Add next month's days to fill grid
+            const totalCells = calendarDays.children.length;
+            const remainingCells = 42 - totalCells;
+            for (let day = 1; day <= remainingCells; day++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day other-month disabled';
+                dayDiv.textContent = day;
+                calendarDays.appendChild(dayDiv);
+            }
+            
+            // Update navigation buttons
+            const prevBtn = document.getElementById('prev-month');
+            const nextBtn = document.getElementById('next-month');
+            
+            const currentMonth = new Date();
+            currentMonth.setDate(1);
+            currentMonth.setHours(0, 0, 0, 0);
+            
+            const calMonth = new Date(currentCalendarMonth);
+            calMonth.setDate(1);
+            calMonth.setHours(0, 0, 0, 0);
+            
+            prevBtn.disabled = calMonth <= currentMonth;
+            
+            const maxMonth = new Date(maxDate);
+            maxMonth.setDate(1);
+            nextBtn.disabled = calMonth >= maxMonth;
+        }
+
+        async function changeMonth(delta) {
+            currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() + delta);
+            await loadBookings();
+        }
+
+        function selectDate(dateStr) {
+            if (!isDateBookable(dateStr)) return;
+            currentDate = dateStr;
+            renderCalendar();
+            renderTimeSlots();
+        }
+
+        function renderTimeSlots() {
+            const container = document.getElementById('time-slots');
+            const alertsContainer = document.getElementById('alerts');
+            container.innerHTML = '';
+            alertsContainer.innerHTML = '';
+
+            if (isMonday(currentDate)) {
+                alertsContainer.innerHTML = `
+                    <div class="alert alert-warning">
+                        ⚠️ TK's Tavern is closed on Mondays. Please select another day.
+                    </div>
+                `;
+                return;
+            }
+
+            if (!isDateBookable(currentDate)) {
+                alertsContainer.innerHTML = `
+                    <div class="alert alert-warning">
+                        ⚠️ You can only book up to 7 days in advance. Please select a different date.
+                    </div>
+                `;
+                return;
+            }
+
+            const dateBookings = allBookings[currentDate] || {};
+            const memberBookings = Object.values(dateBookings).filter(b => b.memberName === getCurrentMemberName());
+
+            if (memberBookings.length > 0) {
+                alertsContainer.innerHTML = `
+                    <div class="alert alert-info">
+                        ℹ️ You already have a booking today. You can cancel it to book a different time slot.
+                    </div>
+                `;
+            }
+
+            timeSlots.forEach((slot, index) => {
+                const slotKey = `${slot.start}-${slot.end}`;
+                const booking = dateBookings[slotKey];
+                const isBooked = !!booking;
+                const isMyBooking = isBooked && booking.memberName === getCurrentMemberName();
+
+                // Check if this slot is part of a 2-hour booking
+                let partOfTwoHourBooking = null;
+                if (!isBooked && index > 0) {
+                    const prevSlot = timeSlots[index - 1];
+                    const prevSlotKey = `${prevSlot.start}-${slot.end}`;
+                    if (dateBookings[prevSlotKey]) {
+                        partOfTwoHourBooking = dateBookings[prevSlotKey];
+                    }
+                }
+
+                const slotDiv = document.createElement('div');
+                slotDiv.className = `time-slot ${isBooked || partOfTwoHourBooking ? (isMyBooking || (partOfTwoHourBooking && partOfTwoHourBooking.memberName === getCurrentMemberName()) ? 'my-booking' : 'booked') : 'available'}`;
+                
+                let content = `
+                    <div class="time-header">${slot.label}</div>
+                `;
+
+                if (isBooked) {
+                    const duration = booking.duration || 1;
+                    content += `<div class="slot-status">❌ Booked (${duration}h)</div>`;
+                    content += `<div class="booked-by">Booked by: ${booking.memberName}</div>`;
+                    if (isMyBooking) {
+                        content += `<button class="btn btn-cancel" onclick="cancelBooking('${booking.id}')">Cancel Booking</button>`;
+                    }
+                } else if (partOfTwoHourBooking) {
+                    content += `<div class="slot-status">❌ Booked (2h block)</div>`;
+                    content += `<div class="booked-by">Booked by: ${partOfTwoHourBooking.memberName}</div>`;
+                    if (partOfTwoHourBooking.memberName === getCurrentMemberName()) {
+                        content += `<button class="btn btn-cancel" onclick="cancelBooking('${partOfTwoHourBooking.id}')">Cancel Booking</button>`;
+                    }
+                } else {
+                    content += `<div class="slot-status">✅ Available</div>`;
+                    const hasBookingToday = memberBookings.length > 0;
+                    if (hasBookingToday) {
+                        content += `<button class="btn btn-book" disabled style="opacity: 0.5; cursor: not-allowed;">Max 1 booking per day</button>`;
+                    } else {
+                        slotDiv.onclick = () => openBookingModal(slot, index);
+                    }
+                }
+
+                slotDiv.innerHTML = content;
+                container.appendChild(slotDiv);
+            });
+        }
+
+        function openBookingModal(slot, slotIndex) {
+            selectedSlot = { ...slot, index: slotIndex };
+            document.getElementById('modal-time-info').textContent = `Starting at: ${slot.label.split(' - ')[0]}`;
+            document.getElementById('member-name').value = getCurrentMemberName() || '';
+            
+            // Check if 2-hour booking is possible
+            const durationSelect = document.getElementById('duration-select');
+            durationSelect.innerHTML = '<option value="1">1 Hour</option>';
+            
+            if (slotIndex < timeSlots.length - 1) {
+                const nextSlot = timeSlots[slotIndex + 1];
+                const nextSlotKey = `${nextSlot.start}-${nextSlot.end}`;
+                const dateBookings = allBookings[currentDate] || {};
+                
+                if (!dateBookings[nextSlotKey]) {
+                    durationSelect.innerHTML += '<option value="2">2 Hours</option>';
+                }
+            }
+            
+            document.getElementById('booking-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('booking-modal').classList.remove('active');
+            selectedSlot = null;
+        }
+
+        async function confirmBooking() {
+            const memberName = document.getElementById('member-name').value.trim();
+            const duration = parseInt(document.getElementById('duration-select').value);
+            
+            if (!memberName) {
+                alert('Please enter your name');
+                return;
+            }
+
+            let endTime;
+            if (duration === 1) {
+                endTime = selectedSlot.end;
+            } else {
+                const nextSlot = timeSlots[selectedSlot.index + 1];
+                endTime = nextSlot.end;
+            }
+
+            try {
+                const { data, error } = await supabase
+                    .from('bookings')
+                    .insert([
+                        {
+                            booking_date: currentDate,
+                            start_time: selectedSlot.start,
+                            end_time: endTime,
+                            member_name: memberName,
+                            duration: duration
+                        }
+                    ]);
+
+                if (error) throw error;
+
+                localStorage.setItem('lastMemberName', memberName);
+                
+                closeModal();
+                await loadBookings();
+            } catch (error) {
+                console.error('Error creating booking:', error);
+                alert('Error creating booking. Please try again.');
+            }
+        }
+
+        async function cancelBooking(bookingId) {
+            if (!confirm('Are you sure you want to cancel this booking?')) {
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('bookings')
+                    .delete()
+                    .eq('id', bookingId);
+
+                if (error) throw error;
+
+                await loadBookings();
+            } catch (error) {
+                console.error('Error canceling booking:', error);
+                alert('Error canceling booking. Please try again.');
+            }
+        }
+
+        function getCurrentMemberName() {
+            return localStorage.getItem('lastMemberName') || '';
+        }
+    </script>
+</body>
+</html>
