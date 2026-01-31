@@ -1251,16 +1251,6 @@
 
                 console.log(`Slot ${slot.label}: key=${slotKey}, isBooked=${isBooked}, partOfTwoHour=${!!partOfTwoHourBooking}, booking=`, booking || partOfTwoHourBooking);
 
-                // Check if this slot is part of a 2-hour booking
-                let partOfTwoHourBooking = null;
-                if (!isBooked && index > 0) {
-                    const prevSlot = timeSlots[index - 1];
-                    const prevSlotKey = `${prevSlot.start}-${slot.end}`;
-                    if (dateBookings[prevSlotKey]) {
-                        partOfTwoHourBooking = dateBookings[prevSlotKey];
-                    }
-                }
-
                 const slotDiv = document.createElement('div');
                 slotDiv.className = `time-slot ${isBooked || partOfTwoHourBooking ? (isMyBooking || (partOfTwoHourBooking && partOfTwoHourBooking.memberName === getCurrentMemberName()) ? 'my-booking' : 'booked') : 'available'}`;
                 
@@ -1467,7 +1457,9 @@
         }
 
         function formatTime(timeStr) {
-            const [hours, minutes] = timeStr.split(':');
+            if (!timeStr) return '';
+            const parts = timeStr.split(':');
+            const hours = parts[0];
             const hour = parseInt(hours);
             const ampm = hour >= 12 ? 'PM' : 'AM';
             const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
