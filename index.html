@@ -618,7 +618,7 @@
                 const startDate = new Date(currentCalendarMonth);
                 startDate.setDate(1);
                 const endDate = new Date(currentCalendarMonth);
-                endDate.setMonth(endDate.getMonth() + 2);
+                endDate.setMonth(endDate.getMonth() + 1);
                 endDate.setDate(0);
 
                 const { data, error } = await supabaseClient
@@ -690,13 +690,14 @@
 
         function isDateBookable(dateStr) {
             const date = new Date(dateStr);
+            date.setHours(0, 0, 0, 0);
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const maxDate = getMaxBookingDate();
             
-            if (date < today) return false;
-            if (date > maxDate) return false;
-            if (isMonday(dateStr)) return false;
+            if (date < today) return false;  // Can't book past dates
+            if (date > maxDate) return false;  // Can't book more than 7 days ahead
+            if (isMonday(dateStr)) return false;  // Can't book Mondays
             
             return true;
         }
@@ -756,8 +757,12 @@
                     dayDiv.classList.add('closed');
                     dayContent = `<div class="day-number">${day}</div><div class="day-content"></div>`;
                 }
-                // Check if outside booking window
-                else if (date < today || date > maxDate) {
+                // Check if in the past
+                else if (date < today) {
+                    dayDiv.classList.add('disabled');
+                }
+                // Check if beyond booking window (more than 7 days ahead)
+                else if (date > maxDate) {
                     dayDiv.classList.add('disabled');
                 } else {
                     // Show bookings or available slots
@@ -785,6 +790,7 @@
                         dayContent += `<div class="slots-available">14 slots open</div>`;
                     }
                     
+                    // Allow clicking on all bookable dates (including today)
                     dayDiv.onclick = () => openSlotsModal(dateStr);
                 }
                 
@@ -828,10 +834,13 @@
         }
 
         function openSlotsModal(dateStr) {
-            if (!isDateBookable(dateStr)) return;
-            
-            currentDate = dateStr;
             const date = new Date(dateStr);
+            date.setHours(0, 0, 0, 0);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Allow viewing any date (past, present, future) but only booking if bookable
+            currentDate = dateStr;
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             document.getElementById('modal-date-title').textContent = date.toLocaleDateString('en-US', options);
             
@@ -850,10 +859,38 @@
             container.innerHTML = '';
             alertsContainer.innerHTML = '';
 
+            const date = new Date(currentDate);
+            date.setHours(0, 0, 0, 0);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const isPastDate = date < today;
+
+            // Check if it's Monday or outside booking window
+            if (isMonday(currentDate)) {
+                alertsContainer.innerHTML = `
+                    <div class="alert alert-warning">
+                        ⚠️ TK's Tavern is closed on Mondays.
+                    </div>
+                `;
+                return;
+            }
+
+            if (isPastDate) {
+                alertsContainer.innerHTML = `
+                    <div class="alert alert-warning">
+                        ℹ️ This date has passed. You can view bookings but cannot make new reservations.
+                    </div>
+                `;
+            } else if (!isDateBookable(currentDate)) {
+                alertsContainer.innerHTML = `
+                    <div class="alert alert-warning">
+                        ⚠️ You can only book up to 7 days in advance. Please select a different date.
+                    </div>
+                `;
+            }
+
             const dateBookings = allBookings[currentDate] || {};
             const memberBookings = Object.values(dateBookings).filter(b => b.memberName === getCurrentMemberName());
-
-            // Don't show confusing alert - let users see the slots and their booking will have a cancel button
 
             timeSlots.forEach((slot, index) => {
                 const slotKey = `${slot.start}-${slot.end}`;
@@ -892,7 +929,16 @@
                 } else {
                     content += `<div class="slot-status">✅ Available</div>`;
                     const hasBookingToday = memberBookings.length > 0;
-                    if (hasBookingToday) {
+                    const isPastDate = new Date(currentDate) < new Date(new Date().setHours(0,0,0,0));
+                    const canBook = isDateBookable(currentDate);
+                    
+                    if (isPastDate) {
+                        // Past date - can't book
+                        content += `<button class="btn btn-book" disabled style="opacity: 0.5; cursor: not-allowed;">Past date</button>`;
+                    } else if (!canBook) {
+                        // Too far in advance
+                        content += `<button class="btn btn-book" disabled style="opacity: 0.5; cursor: not-allowed;">Too far ahead</button>`;
+                    } else if (hasBookingToday) {
                         content += `<button class="btn btn-book" disabled style="opacity: 0.5; cursor: not-allowed;">1 per day limit</button>`;
                     } else {
                         slotDiv.onclick = () => openBookingModal(slot, index);
