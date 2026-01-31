@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -470,19 +469,214 @@
             }
 
             .calendar-day {
-                min-height: 60px;
+                min-height: 70px;
+                padding: 6px;
             }
 
             .day-number {
-                font-size: 1.2em;
+                font-size: 1em;
             }
 
-            .day-indicator {
-                font-size: 0.65em;
+            .day-content {
+                font-size: 0.7em;
+            }
+
+            .booking-pill {
+                font-size: 0.7em;
+                padding: 2px 4px;
+                margin-bottom: 2px;
+            }
+
+            .slots-available {
+                font-size: 0.7em;
+                margin-top: 3px;
+            }
+
+            .day-header {
+                padding: 8px 3px;
+                font-size: 0.7em;
             }
 
             .content {
-                padding: 20px;
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            .header p {
+                font-size: 0.9em;
+            }
+
+            .calendar-header {
+                flex-direction: column;
+                gap: 12px;
+                margin-bottom: 20px;
+            }
+
+            .calendar-header h2 {
+                font-size: 1.3em;
+                text-align: center;
+            }
+
+            .calendar-nav {
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .nav-btn {
+                padding: 8px 12px;
+                font-size: 0.85em;
+                flex: 1;
+                min-width: 80px;
+            }
+
+            .time-slots-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                max-width: 95%;
+                margin: 10px;
+            }
+
+            .modal-header h2 {
+                font-size: 1.2em;
+            }
+
+            .modal-body {
+                padding: 20px 15px;
+            }
+
+            .time-slot {
+                padding: 12px;
+            }
+
+            .time-header {
+                font-size: 1em;
+            }
+
+            .btn {
+                font-size: 0.85em;
+            }
+
+            .calendar-day.today .day-number {
+                width: 26px;
+                height: 26px;
+                font-size: 0.95em;
+            }
+
+            .calendar-day.closed::after {
+                font-size: 0.8em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                border-radius: 0;
+            }
+
+            .header {
+                padding: 20px 15px;
+            }
+
+            .header h1 {
+                font-size: 1.3em;
+            }
+
+            .header p {
+                font-size: 0.85em;
+            }
+
+            .content {
+                padding: 10px;
+            }
+
+            .calendar-header {
+                margin-bottom: 15px;
+            }
+
+            .calendar-header h2 {
+                font-size: 1.1em;
+            }
+
+            .nav-btn {
+                padding: 7px 10px;
+                font-size: 0.75em;
+                min-width: 70px;
+            }
+
+            .calendar-grid {
+                gap: 3px;
+            }
+
+            .calendar-day {
+                min-height: 60px;
+                padding: 4px;
+            }
+
+            .day-number {
+                font-size: 0.9em;
+            }
+
+            .day-content {
+                font-size: 0.65em;
+            }
+
+            .booking-pill {
+                font-size: 0.6em;
+                padding: 1px 3px;
+                margin-bottom: 1px;
+            }
+
+            .slots-available {
+                font-size: 0.65em;
+            }
+
+            .day-header {
+                padding: 6px 2px;
+                font-size: 0.6em;
+            }
+
+            .modal-header {
+                padding: 20px 15px;
+            }
+
+            .modal-header h2 {
+                font-size: 1em;
+            }
+
+            .modal-header p {
+                font-size: 0.8em;
+            }
+
+            .modal-body {
+                padding: 15px;
+            }
+
+            .time-header {
+                font-size: 0.95em;
+            }
+
+            .slot-status {
+                font-size: 0.75em;
+            }
+
+            .booked-by {
+                font-size: 0.7em;
+            }
+
+            .btn {
+                padding: 8px 12px;
+                font-size: 0.8em;
+            }
+
+            .calendar-day.today .day-number {
+                width: 22px;
+                height: 22px;
+                font-size: 0.85em;
             }
         }
     </style>
@@ -833,8 +1027,12 @@
         }
 
         async function changeMonth(delta) {
-            const newMonth = new Date(currentCalendarMonth);
-            newMonth.setMonth(newMonth.getMonth() + delta);
+            console.log('Current month before change:', currentCalendarMonth.getMonth() + 1, currentCalendarMonth.getFullYear());
+            console.log('Delta:', delta);
+            
+            const newMonth = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() + delta, 1);
+            console.log('New month after change:', newMonth.getMonth() + 1, newMonth.getFullYear());
+            
             currentCalendarMonth = newMonth;
             await loadBookings();
         }
