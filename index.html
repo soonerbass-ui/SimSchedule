@@ -1208,7 +1208,8 @@
             console.log('Total bookings:', Object.keys(dateBookings).length);
 
             timeSlots.forEach((slot, index) => {
-                const slotKey = `${slot.start}-${slot.end}`;
+                // Add :00 seconds to match database format
+                const slotKey = `${slot.start}:00-${slot.end}:00`;
                 const booking = dateBookings[slotKey];
                 const isBooked = !!booking;
                 const isMyBooking = isBooked && booking.memberName === getCurrentMemberName();
@@ -1287,7 +1288,7 @@
             
             if (slotIndex < timeSlots.length - 1) {
                 const nextSlot = timeSlots[slotIndex + 1];
-                const nextSlotKey = `${nextSlot.start}-${nextSlot.end}`;
+                const nextSlotKey = `${nextSlot.start}:00-${nextSlot.end}:00`;
                 const dateBookings = allBookings[currentDate] || {};
                 
                 if (!dateBookings[nextSlotKey]) {
@@ -1333,7 +1334,7 @@
                 }
 
                 console.log('All bookings for', currentDate, ':', allDayBookings);
-                console.log('Trying to book:', selectedSlot.start, 'to', endTime);
+                console.log('Trying to book:', selectedSlot.start + ':00', 'to', endTime + ':00');
 
                 // Check every existing booking for overlap
                 if (allDayBookings && allDayBookings.length > 0) {
@@ -1343,9 +1344,10 @@
                         
                         console.log('Checking against existing:', existingStart, 'to', existingEnd);
                         
-                        // Check if times overlap
-                        // Overlap occurs if new booking starts before existing ends AND new booking ends after existing starts
-                        const overlaps = (selectedSlot.start < existingEnd && endTime > existingStart);
+                        // Check if times overlap (add :00 to our times for comparison)
+                        const ourStart = selectedSlot.start + ':00';
+                        const ourEnd = endTime + ':00';
+                        const overlaps = (ourStart < existingEnd && ourEnd > existingStart);
                         
                         if (overlaps) {
                             console.log('OVERLAP DETECTED!');
@@ -1360,14 +1362,14 @@
 
                 console.log('No overlaps found, proceeding with booking...');
 
-                // Proceed with booking
+                // Proceed with booking - store with :00 seconds format
                 const { data, error } = await supabaseClient
                     .from('bookings')
                     .insert([
                         {
                             booking_date: currentDate,
-                            start_time: selectedSlot.start,
-                            end_time: endTime,
+                            start_time: selectedSlot.start + ':00',
+                            end_time: endTime + ':00',
                             member_name: memberName,
                             duration: duration
                         }
@@ -1631,7 +1633,8 @@
             // Calculate end time
             const startHour = parseInt(startTime.split(':')[0]);
             const endHour = startHour + duration;
-            const endTime = endHour.toString().padStart(2, '0') + ':00';
+            const endTime = endHour.toString().padStart(2, '0') + ':00:00';
+            const formattedStartTime = startTime + ':00';
 
             try {
                 const { data, error } = await supabaseClient
@@ -1639,7 +1642,7 @@
                     .insert([
                         {
                             booking_date: date,
-                            start_time: startTime,
+                            start_time: formattedStartTime,
                             end_time: endTime,
                             member_name: memberName,
                             duration: duration
