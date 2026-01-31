@@ -1238,7 +1238,17 @@
                 const isBooked = !!booking;
                 const isMyBooking = isBooked && booking.memberName === getCurrentMemberName();
 
-                console.log(`Slot ${slot.label}: key=${slotKey}, isBooked=${isBooked}, booking=`, booking);
+                // Check if this slot is part of a 2-hour booking
+                let partOfTwoHourBooking = null;
+                if (!isBooked && index > 0) {
+                    const prevSlot = timeSlots[index - 1];
+                    const twoHourKey = `${prevSlot.start}:00-${slot.end}:00`;
+                    if (dateBookings[twoHourKey]) {
+                        partOfTwoHourBooking = dateBookings[twoHourKey];
+                    }
+                }
+
+                console.log(`Slot ${slot.label}: key=${slotKey}, isBooked=${isBooked}, partOfTwoHour=${!!partOfTwoHourBooking}, booking=`, booking || partOfTwoHourBooking);
 
                 // Check if this slot is part of a 2-hour booking
                 let partOfTwoHourBooking = null;
