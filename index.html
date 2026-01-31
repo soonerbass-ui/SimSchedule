@@ -497,6 +497,7 @@
             <div class="calendar-header">
                 <h2 id="calendar-month-year"></h2>
                 <div class="calendar-nav">
+                    <button class="nav-btn" onclick="showMyBookings()" style="background: #2196F3;">My Bookings</button>
                     <button class="nav-btn" id="prev-month" onclick="changeMonth(-1)">← Previous</button>
                     <button class="nav-btn" id="next-month" onclick="changeMonth(1)">Next →</button>
                 </div>
@@ -555,6 +556,22 @@
                 <div class="modal-buttons">
                     <button class="btn btn-book" onclick="confirmBooking()">Confirm Booking</button>
                     <button class="btn btn-close" onclick="closeBookingModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Bookings Modal -->
+    <div class="modal" id="my-bookings-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>My Bookings</h2>
+                <p>Manage your simulator reservations</p>
+            </div>
+            <div class="modal-body">
+                <div id="my-bookings-list"></div>
+                <div class="close-btn-container">
+                    <button class="btn btn-close" onclick="closeMyBookingsModal()">Close</button>
                 </div>
             </div>
         </div>
@@ -836,13 +853,7 @@
             const dateBookings = allBookings[currentDate] || {};
             const memberBookings = Object.values(dateBookings).filter(b => b.memberName === getCurrentMemberName());
 
-            if (memberBookings.length > 0) {
-                alertsContainer.innerHTML = `
-                    <div class="alert alert-info">
-                        ℹ️ You already have a booking on this day. Cancel it to book a different time.
-                    </div>
-                `;
-            }
+            // Don't show confusing alert - let users see the slots and their booking will have a cancel button
 
             timeSlots.forEach((slot, index) => {
                 const slotKey = `${slot.start}-${slot.end}`;
@@ -1010,8 +1021,8 @@
                 localStorage.setItem('lastMemberName', memberName);
                 
                 closeBookingModal();
+                closeSlotsModal();  // Also close the time slots modal
                 await loadBookings();
-                renderTimeSlots();
             } catch (error) {
                 console.error('Error creating booking:', error);
                 alert('Error creating booking: ' + (error.message || 'Please try again.'));
@@ -1049,6 +1060,87 @@
             const ampm = hour >= 12 ? 'PM' : 'AM';
             const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
             return `${displayHour}${ampm}`;
+        }
+
+        async function showMyBookings() {
+            const memberName = getCurrentMemberName();
+            
+            if (!memberName) {
+                alert('You haven\'t made any bookings yet. Enter your name when making a booking to track it.');
+                return;
+            }
+
+            // Get all bookings for this member
+            const { data: myBookings, error } = await supabaseClient
+                .from('bookings')
+                .select('*')
+                .eq('member_name', memberName)
+                .gte('booking_date', new Date().toISOString().split('T')[0])
+                .order('booking_date', { ascending: true })
+                .order('start_time', { ascending: true });
+
+            if (error) {
+                console.error('Error loading my bookings:', error);
+                alert('Error loading your bookings.');
+                return;
+            }
+
+            const container = document.getElementById('my-bookings-list');
+            
+            if (!myBookings || myBookings.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-info">
+                        You don't have any upcoming bookings.
+                    </div>
+                `;
+            } else {
+                let html = '<div class="time-slots-grid">';
+                
+                myBookings.forEach(booking => {
+                    const date = new Date(booking.booking_date);
+                    const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                    const startTime = formatTime(booking.start_time);
+                    const endTime = formatTime(booking.end_time);
+                    
+                    html += `
+                        <div class="time-slot my-booking">
+                            <div class="time-header">${dateStr}</div>
+                            <div class="slot-status">${startTime} - ${endTime} (${booking.duration}h)</div>
+                            <button class="btn btn-cancel" onclick="cancelBookingFromList('${booking.id}')">Cancel Booking</button>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                container.innerHTML = html;
+            }
+
+            document.getElementById('my-bookings-modal').classList.add('active');
+        }
+
+        function closeMyBookingsModal() {
+            document.getElementById('my-bookings-modal').classList.remove('active');
+        }
+
+        async function cancelBookingFromList(bookingId) {
+            if (!confirm('Are you sure you want to cancel this booking?')) {
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient
+                    .from('bookings')
+                    .delete()
+                    .eq('id', bookingId);
+
+                if (error) throw error;
+
+                await loadBookings();
+                await showMyBookings(); // Refresh the my bookings list
+            } catch (error) {
+                console.error('Error canceling booking:', error);
+                alert('Error canceling booking. Please try again.');
+            }
         }
     </script>
 </body>
