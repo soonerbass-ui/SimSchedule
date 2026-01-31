@@ -941,44 +941,44 @@
             }
 
             try {
-                // First, check if this slot is already booked
-                const { data: existingBookings, error: checkError } = await supabaseClient
+                // Get ALL bookings for this date to check for overlaps
+                const { data: allDayBookings, error: checkError } = await supabaseClient
                     .from('bookings')
                     .select('*')
-                    .eq('booking_date', currentDate)
-                    .eq('start_time', selectedSlot.start)
-                    .eq('end_time', endTime);
+                    .eq('booking_date', currentDate);
 
-                if (checkError) throw checkError;
-
-                if (existingBookings && existingBookings.length > 0) {
-                    alert('Sorry, this time slot was just booked by someone else! Please select a different time.');
-                    closeBookingModal();
-                    await loadBookings();
-                    renderTimeSlots();
-                    return;
+                if (checkError) {
+                    console.error('Error checking bookings:', checkError);
+                    throw checkError;
                 }
 
-                // If 2-hour booking, also check the next hour slot
-                if (duration === 2) {
-                    const nextSlot = timeSlots[selectedSlot.index + 1];
-                    const { data: nextSlotBookings, error: nextCheckError } = await supabaseClient
-                        .from('bookings')
-                        .select('*')
-                        .eq('booking_date', currentDate)
-                        .eq('start_time', nextSlot.start)
-                        .eq('end_time', nextSlot.end);
+                console.log('All bookings for', currentDate, ':', allDayBookings);
+                console.log('Trying to book:', selectedSlot.start, 'to', endTime);
 
-                    if (nextCheckError) throw nextCheckError;
-
-                    if (nextSlotBookings && nextSlotBookings.length > 0) {
-                        alert('Sorry, the second hour of this slot was just booked! Please select a different time.');
-                        closeBookingModal();
-                        await loadBookings();
-                        renderTimeSlots();
-                        return;
+                // Check every existing booking for overlap
+                if (allDayBookings && allDayBookings.length > 0) {
+                    for (const booking of allDayBookings) {
+                        const existingStart = booking.start_time;
+                        const existingEnd = booking.end_time;
+                        
+                        console.log('Checking against existing:', existingStart, 'to', existingEnd);
+                        
+                        // Check if times overlap
+                        // Overlap occurs if new booking starts before existing ends AND new booking ends after existing starts
+                        const overlaps = (selectedSlot.start < existingEnd && endTime > existingStart);
+                        
+                        if (overlaps) {
+                            console.log('OVERLAP DETECTED!');
+                            alert(`Sorry! This time conflicts with an existing booking:\n${existingStart} - ${existingEnd} (${booking.member_name})\n\nPlease choose a different time.`);
+                            closeBookingModal();
+                            await loadBookings();
+                            renderTimeSlots();
+                            return;
+                        }
                     }
                 }
+
+                console.log('No overlaps found, proceeding with booking...');
 
                 // Proceed with booking
                 const { data, error } = await supabaseClient
@@ -994,8 +994,9 @@
                     ]);
 
                 if (error) {
+                    console.error('Insert error:', error);
                     // Check if it's a unique constraint violation
-                    if (error.code === '23505') {
+                    if (error.code === '23505' || error.message.includes('duplicate') || error.message.includes('unique')) {
                         alert('Sorry, this time slot was just booked by someone else! Please select a different time.');
                         closeBookingModal();
                         await loadBookings();
@@ -1005,6 +1006,7 @@
                     throw error;
                 }
 
+                console.log('Booking successful!');
                 localStorage.setItem('lastMemberName', memberName);
                 
                 closeBookingModal();
@@ -1012,7 +1014,7 @@
                 renderTimeSlots();
             } catch (error) {
                 console.error('Error creating booking:', error);
-                alert('Error creating booking. Please try again.');
+                alert('Error creating booking: ' + (error.message || 'Please try again.'));
             }
         }
 
