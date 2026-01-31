@@ -90,11 +90,13 @@
             background: white;
             border-radius: 8px;
             border: 1px solid #e0e0e0;
+            overflow-x: auto; /* Allow horizontal scroll on mobile */
         }
 
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
+            min-width: 100%; /* Ensure grid doesn't shrink below container */
         }
 
         .day-header {
@@ -464,12 +466,21 @@
                 grid-template-columns: 1fr;
             }
 
+            .calendar {
+                margin: 0 -15px;
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+            }
+
             .calendar-grid {
                 gap: 5px;
+                min-width: 600px; /* Force horizontal scroll instead of squeeze */
             }
 
             .calendar-day {
-                min-height: 70px;
+                min-height: 85px;
+                min-width: 85px;
                 padding: 6px;
             }
 
@@ -482,9 +493,12 @@
             }
 
             .booking-pill {
-                font-size: 0.7em;
+                font-size: 0.65em;
                 padding: 2px 4px;
                 margin-bottom: 2px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
 
             .slots-available {
@@ -495,6 +509,7 @@
             .day-header {
                 padding: 8px 3px;
                 font-size: 0.7em;
+                min-width: 85px;
             }
 
             .content {
@@ -613,12 +628,18 @@
                 min-width: 70px;
             }
 
+            .calendar {
+                margin: 0 -10px;
+            }
+
             .calendar-grid {
-                gap: 3px;
+                gap: 2px;
+                min-width: 500px; /* Smaller but still scrollable */
             }
 
             .calendar-day {
-                min-height: 60px;
+                min-height: 70px;
+                min-width: 70px;
                 padding: 4px;
             }
 
@@ -627,11 +648,11 @@
             }
 
             .day-content {
-                font-size: 0.65em;
+                font-size: 0.6em;
             }
 
             .booking-pill {
-                font-size: 0.6em;
+                font-size: 0.55em;
                 padding: 1px 3px;
                 margin-bottom: 1px;
             }
@@ -643,6 +664,7 @@
             .day-header {
                 padding: 6px 2px;
                 font-size: 0.6em;
+                min-width: 70px;
             }
 
             .modal-header {
