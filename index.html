@@ -546,6 +546,11 @@
                 font-size: 1.2em;
             }
 
+            .modal-header .btn-close {
+                padding: 6px 12px !important;
+                font-size: 0.75em !important;
+            }
+
             .modal-body {
                 padding: 20px 15px;
             }
@@ -652,6 +657,11 @@
                 font-size: 0.8em;
             }
 
+            .modal-header .btn-close {
+                padding: 5px 10px !important;
+                font-size: 0.7em !important;
+            }
+
             .modal-body {
                 padding: 15px;
             }
@@ -718,16 +728,18 @@
     <div class="modal" id="slots-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="modal-date-title"></h2>
-                <p>Select an available time slot to book</p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2 id="modal-date-title"></h2>
+                        <p>Select an available time slot to book</p>
+                    </div>
+                    <button class="btn btn-close" onclick="closeSlotsModal()" style="margin: 0; width: auto; padding: 10px 20px;">Close</button>
+                </div>
             </div>
             <div class="modal-body">
                 <div id="modal-alerts"></div>
                 <div class="time-slots-grid" id="time-slots-grid">
                     <!-- Time slots will be generated here -->
-                </div>
-                <div class="close-btn-container">
-                    <button class="btn btn-close" onclick="closeSlotsModal()">Close</button>
                 </div>
             </div>
         </div>
@@ -1123,19 +1135,19 @@
 
                 if (isBooked) {
                     const duration = booking.duration || 1;
-                    content += `<div class="slot-status">❌ Booked (${duration}h)</div>`;
+                    content += `<div class="slot-status">🔴 Booked (${duration}h)</div>`;
                     content += `<div class="booked-by">by ${booking.memberName}</div>`;
                     if (isMyBooking) {
                         content += `<button class="btn btn-cancel" onclick="cancelBooking('${booking.id}')">Cancel</button>`;
                     }
                 } else if (partOfTwoHourBooking) {
-                    content += `<div class="slot-status">❌ Booked (2h)</div>`;
+                    content += `<div class="slot-status">🔴 Booked (2h)</div>`;
                     content += `<div class="booked-by">by ${partOfTwoHourBooking.memberName}</div>`;
                     if (partOfTwoHourBooking.memberName === getCurrentMemberName()) {
                         content += `<button class="btn btn-cancel" onclick="cancelBooking('${partOfTwoHourBooking.id}')">Cancel</button>`;
                     }
                 } else {
-                    content += `<div class="slot-status">✅ Available</div>`;
+                    content += `<div class="slot-status">🟢 Available</div>`;
                     const hasBookingToday = memberBookings.length > 0;
                     
                     // Parse date in local timezone
