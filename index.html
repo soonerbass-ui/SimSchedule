@@ -1112,11 +1112,17 @@
             const dateBookings = allBookings[currentDate] || {};
             const memberBookings = Object.values(dateBookings).filter(b => b.memberName === getCurrentMemberName());
 
+            console.log('Rendering time slots for date:', currentDate);
+            console.log('All bookings for this date:', dateBookings);
+            console.log('Total bookings:', Object.keys(dateBookings).length);
+
             timeSlots.forEach((slot, index) => {
                 const slotKey = `${slot.start}-${slot.end}`;
                 const booking = dateBookings[slotKey];
                 const isBooked = !!booking;
                 const isMyBooking = isBooked && booking.memberName === getCurrentMemberName();
+
+                console.log(`Slot ${slot.label}: key=${slotKey}, isBooked=${isBooked}, booking=`, booking);
 
                 // Check if this slot is part of a 2-hour booking
                 let partOfTwoHourBooking = null;
