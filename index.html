@@ -909,9 +909,13 @@
             try {
                 const startDate = new Date(currentCalendarMonth);
                 startDate.setDate(1);
+                
+                // Load current month AND next month to handle forward bookings
                 const endDate = new Date(currentCalendarMonth);
-                endDate.setMonth(endDate.getMonth() + 1);
-                endDate.setDate(0);
+                endDate.setMonth(endDate.getMonth() + 2); // Go 2 months ahead
+                endDate.setDate(0); // Last day of next month
+
+                console.log('Loading bookings from', startDate.toISOString().split('T')[0], 'to', endDate.toISOString().split('T')[0]);
 
                 const { data, error } = await supabaseClient
                     .from('bookings')
@@ -1392,8 +1396,14 @@
                 localStorage.setItem('lastMemberName', memberName);
                 
                 closeBookingModal();
-                closeSlotsModal();  // Also close the time slots modal
-                await loadBookings();
+                await loadBookings(); // Reload all bookings from database
+                
+                // If the slots modal is still open, refresh it
+                if (document.getElementById('slots-modal').classList.contains('active')) {
+                    renderTimeSlots(); // Re-render to show the new booking
+                } else {
+                    closeSlotsModal(); // Otherwise close it
+                }
             } catch (error) {
                 console.error('Error creating booking:', error);
                 alert('Error creating booking: ' + (error.message || 'Please try again.'));
