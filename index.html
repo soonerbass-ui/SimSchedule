@@ -907,13 +907,20 @@
 
         async function loadBookings() {
             try {
+                // Load from start of current calendar month through max booking window (7 days from today)
                 const startDate = new Date(currentCalendarMonth);
                 startDate.setDate(1);
                 
-                // Load current month AND next month to handle forward bookings
-                const endDate = new Date(currentCalendarMonth);
-                endDate.setMonth(endDate.getMonth() + 2); // Go 2 months ahead
-                endDate.setDate(0); // Last day of next month
+                const today = new Date();
+                const maxBookingDate = new Date(today);
+                maxBookingDate.setDate(maxBookingDate.getDate() + 7);
+                
+                // Use whichever is later: end of next month OR max booking date
+                const endOfNextMonth = new Date(currentCalendarMonth);
+                endOfNextMonth.setMonth(endOfNextMonth.getMonth() + 2);
+                endOfNextMonth.setDate(0);
+                
+                const endDate = maxBookingDate > endOfNextMonth ? maxBookingDate : endOfNextMonth;
 
                 console.log('Loading bookings from', startDate.toISOString().split('T')[0], 'to', endDate.toISOString().split('T')[0]);
 
@@ -1144,13 +1151,27 @@
             await loadBookings();
         }
 
-        function openSlotsModal(dateStr) {
+        async function openSlotsModal(dateStr) {
             // Parse date in local timezone to avoid timezone conversion issues
             const dateParts = dateStr.split('-');
             const date = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
             
             const today = new Date();
             today.setHours(0, 0, 0, 0);
+            
+            // Check if this date's bookings are loaded
+            // If not, reload bookings to include this date
+            const clickedMonth = date.getMonth();
+            const currentMonth = currentCalendarMonth.getMonth();
+            
+            if (clickedMonth !== currentMonth) {
+                console.log('Date is in different month, reloading bookings...');
+                // Temporarily set calendar month to include this date
+                const tempMonth = currentCalendarMonth;
+                currentCalendarMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+                await loadBookings();
+                currentCalendarMonth = tempMonth; // Restore original
+            }
             
             // Allow viewing any date (past, present, future) but only booking if bookable
             currentDate = dateStr;
