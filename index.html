@@ -993,8 +993,10 @@
             return maxDate;
         }
 
-        function isMonday(date) {
-            return new Date(date).getDay() === 1;
+        function isMonday(dateStr) {
+            const dateParts = dateStr.split('-');
+            const date = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+            return date.getDay() === 1;
         }
 
         function isDateBookable(dateStr) {
@@ -1159,19 +1161,16 @@
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
-            // Check if this date's bookings are loaded
-            // If not, reload bookings to include this date
-            const clickedMonth = date.getMonth();
-            const currentMonth = currentCalendarMonth.getMonth();
+            // Always reload bookings to ensure we have the latest data for this date
+            console.log('Opening slots for', dateStr, '- reloading bookings...');
             
-            if (clickedMonth !== currentMonth) {
-                console.log('Date is in different month, reloading bookings...');
-                // Temporarily set calendar month to include this date
-                const tempMonth = currentCalendarMonth;
-                currentCalendarMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-                await loadBookings();
-                currentCalendarMonth = tempMonth; // Restore original
-            }
+            // Temporarily set calendar to this date's month to load bookings
+            const originalMonth = new Date(currentCalendarMonth);
+            currentCalendarMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+            await loadBookings();
+            currentCalendarMonth = originalMonth; // Restore
+            
+            console.log('Bookings for', dateStr, ':', allBookings[dateStr]);
             
             // Allow viewing any date (past, present, future) but only booking if bookable
             currentDate = dateStr;
