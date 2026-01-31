@@ -999,6 +999,84 @@
             return date.getDay() === 1;
         }
 
+        function getHolidayInfo(dateStr) {
+            const dateParts = dateStr.split('-');
+            const year = parseInt(dateParts[0]);
+            const month = parseInt(dateParts[1]) - 1; // 0-indexed
+            const day = parseInt(dateParts[2]);
+            const date = new Date(year, month, day);
+            
+            // Helper to get nth weekday of month (e.g., "last Monday of May")
+            function getNthWeekdayOfMonth(year, month, weekday, n) {
+                const firstDay = new Date(year, month, 1);
+                const firstWeekday = firstDay.getDay();
+                let offset = (weekday - firstWeekday + 7) % 7;
+                
+                if (n === -1) { // Last occurrence
+                    const lastDay = new Date(year, month + 1, 0);
+                    const lastDate = lastDay.getDate();
+                    const lastWeekday = lastDay.getDay();
+                    offset = lastDate - ((lastWeekday - weekday + 7) % 7);
+                    return new Date(year, month, offset);
+                } else {
+                    offset += (n - 1) * 7;
+                    return new Date(year, month, offset + 1);
+                }
+            }
+            
+            // Memorial Day: Last Monday of May
+            const memorialDay = getNthWeekdayOfMonth(year, 4, 1, -1);
+            const memorialDayStr = `${year}-05-${String(memorialDay.getDate()).padStart(2, '0')}`;
+            const dayAfterMemorial = new Date(memorialDay);
+            dayAfterMemorial.setDate(dayAfterMemorial.getDate() + 1);
+            const dayAfterMemorialStr = `${year}-05-${String(dayAfterMemorial.getDate()).padStart(2, '0')}`;
+            
+            // Labor Day: First Monday of September
+            const laborDay = getNthWeekdayOfMonth(year, 8, 1, 1);
+            const laborDayStr = `${year}-09-${String(laborDay.getDate()).padStart(2, '0')}`;
+            const dayAfterLabor = new Date(laborDay);
+            dayAfterLabor.setDate(dayAfterLabor.getDate() + 1);
+            const dayAfterLaborStr = `${year}-09-${String(dayAfterLabor.getDate()).padStart(2, '0')}`;
+            
+            // Thanksgiving: 4th Thursday of November
+            const thanksgiving = getNthWeekdayOfMonth(year, 10, 4, 4);
+            const thanksgivingStr = `${year}-11-${String(thanksgiving.getDate()).padStart(2, '0')}`;
+            const dayBeforeThanksgiving = new Date(thanksgiving);
+            dayBeforeThanksgiving.setDate(dayBeforeThanksgiving.getDate() - 1);
+            const dayBeforeThanksgivingStr = `${year}-11-${String(dayBeforeThanksgiving.getDate()).padStart(2, '0')}`;
+            
+            // Christmas: December 25
+            const christmasStr = `${year}-12-25`;
+            const christmasEveStr = `${year}-12-24`;
+            
+            // New Year's: January 1
+            const newYearsStr = `${year}-01-01`;
+            const newYearsEveStr = `${year}-12-31`;
+            
+            // Check what type of day this is
+            if (dateStr === thanksgivingStr || dateStr === christmasStr || dateStr === newYearsStr) {
+                return { closed: true, reason: 'Holiday - Closed All Day' };
+            }
+            
+            if (dateStr === dayAfterMemorialStr) {
+                return { closed: true, reason: 'Closed (Day after Memorial Day)' };
+            }
+            
+            if (dateStr === dayAfterLaborStr) {
+                return { closed: true, reason: 'Closed (Day after Labor Day)' };
+            }
+            
+            if (dateStr === dayBeforeThanksgivingStr || dateStr === christmasEveStr || dateStr === newYearsEveStr) {
+                return { earlyClose: true, closeTime: '15:00', reason: 'Closes at 3 PM' };
+            }
+            
+            if (dateStr === memorialDayStr || dateStr === laborDayStr) {
+                return { openMonday: true, reason: 'Open on Holiday' };
+            }
+            
+            return null;
+        }
+
         function isDateBookable(dateStr) {
             // Parse date in local timezone
             const dateParts = dateStr.split('-');
@@ -1011,7 +1089,13 @@
             
             if (date < today) return false;  // Can't book past dates
             if (date > maxDate) return false;  // Can't book more than 7 days ahead
-            if (isMonday(dateStr)) return false;  // Can't book Mondays
+            
+            // Check holiday status
+            const holidayInfo = getHolidayInfo(dateStr);
+            if (holidayInfo && holidayInfo.closed) return false;  // Closed on holidays
+            
+            // Check if regular Monday (but allow Memorial Day and Labor Day)
+            if (isMonday(dateStr) && (!holidayInfo || !holidayInfo.openMonday)) return false;
             
             return true;
         }
@@ -1069,8 +1153,36 @@
                 
                 // Check if Monday (closed)
                 if (date.getDay() === 1) {
-                    dayDiv.classList.add('closed');
-                    dayContent = `<div class="day-number">${day}</div><div class="day-content"></div>`;
+                    const holidayInfo = getHolidayInfo(dateStr);
+                    if (holidayInfo && holidayInfo.openMonday) {
+                        // Memorial Day or Labor Day - open on Monday
+                        const dateBookings = allBookings[dateStr] || {};
+                        const bookingsList = Object.entries(dateBookings);
+                        
+                        if (bookingsList.length > 0) {
+                            bookingsList.slice(0, 3).forEach(([slotKey, booking]) => {
+                                const startTime = slotKey.split('-')[0];
+                                const timeLabel = formatTime(startTime);
+                                dayContent += `<div class="booking-pill">${timeLabel} - ${booking.memberName}</div>`;
+                            });
+                            
+                            if (bookingsList.length > 3) {
+                                dayContent += `<div class="slots-available">+${bookingsList.length - 3} more</div>`;
+                            }
+                            
+                            const availableCount = 14 - bookingsList.length;
+                            if (availableCount > 0) {
+                                dayContent += `<div class="slots-available">${availableCount} slots open</div>`;
+                            }
+                        } else {
+                            dayContent += `<div class="slots-available">Open - Holiday</div>`;
+                        }
+                        dayDiv.onclick = () => openSlotsModal(dateStr);
+                    } else {
+                        // Regular Monday - closed
+                        dayDiv.classList.add('closed');
+                        dayContent = `<div class="day-number">${day}</div><div class="day-content"></div>`;
+                    }
                 }
                 // Check if in the past
                 else if (date < today) {
@@ -1080,33 +1192,48 @@
                 else if (date > maxDate) {
                     dayDiv.classList.add('disabled');
                 } else {
-                    // Show bookings or available slots
-                    const dateBookings = allBookings[dateStr] || {};
-                    const bookingsList = Object.entries(dateBookings);
+                    // Check for holidays
+                    const holidayInfo = getHolidayInfo(dateStr);
                     
-                    if (bookingsList.length > 0) {
-                        // Show booked time slots
-                        bookingsList.slice(0, 3).forEach(([slotKey, booking]) => {
-                            const startTime = slotKey.split('-')[0];
-                            const timeLabel = formatTime(startTime);
-                            dayContent += `<div class="booking-pill">${timeLabel} - ${booking.memberName}</div>`;
-                        });
-                        
-                        if (bookingsList.length > 3) {
-                            dayContent += `<div class="slots-available">+${bookingsList.length - 3} more</div>`;
-                        }
-                        
-                        // Show available count
-                        const availableCount = 14 - bookingsList.length;
-                        if (availableCount > 0) {
-                            dayContent += `<div class="slots-available">${availableCount} slots open</div>`;
-                        }
+                    if (holidayInfo && holidayInfo.closed) {
+                        // Closed holiday (Thanksgiving, Christmas, New Year's)
+                        dayDiv.classList.add('closed');
+                        dayContent = `<div class="day-number">${day}</div><div class="day-content"><div class="slots-available" style="color: #d32f2f;">${holidayInfo.reason}</div></div>`;
                     } else {
-                        dayContent += `<div class="slots-available">14 slots open</div>`;
+                        // Show bookings or available slots
+                        const dateBookings = allBookings[dateStr] || {};
+                        const bookingsList = Object.entries(dateBookings);
+                        
+                        if (holidayInfo && holidayInfo.earlyClose) {
+                            dayContent += `<div class="slots-available" style="color: #ff9800; font-weight: 600;">${holidayInfo.reason}</div>`;
+                        }
+                        
+                        if (bookingsList.length > 0) {
+                            // Show booked time slots
+                            bookingsList.slice(0, 3).forEach(([slotKey, booking]) => {
+                                const startTime = slotKey.split('-')[0];
+                                const timeLabel = formatTime(startTime);
+                                dayContent += `<div class="booking-pill">${timeLabel} - ${booking.memberName}</div>`;
+                            });
+                            
+                            if (bookingsList.length > 3) {
+                                dayContent += `<div class="slots-available">+${bookingsList.length - 3} more</div>`;
+                            }
+                            
+                            // Show available count (less on early close days)
+                            const maxSlots = (holidayInfo && holidayInfo.earlyClose) ? 7 : 14;
+                            const availableCount = maxSlots - bookingsList.length;
+                            if (availableCount > 0) {
+                                dayContent += `<div class="slots-available">${availableCount} slots open</div>`;
+                            }
+                        } else {
+                            const maxSlots = (holidayInfo && holidayInfo.earlyClose) ? 7 : 14;
+                            dayContent += `<div class="slots-available">${maxSlots} slots open</div>`;
+                        }
+                        
+                        // Allow clicking on all bookable dates (including today)
+                        dayDiv.onclick = () => openSlotsModal(dateStr);
                     }
-                    
-                    // Allow clicking on all bookable dates (including today)
-                    dayDiv.onclick = () => openSlotsModal(dateStr);
                 }
                 
                 dayContent += `</div>`;
@@ -1203,9 +1330,23 @@
 
             // Check if it's Monday or outside booking window
             if (isMonday(currentDate)) {
+                const holidayInfo = getHolidayInfo(currentDate);
+                if (!holidayInfo || !holidayInfo.openMonday) {
+                    alertsContainer.innerHTML = `
+                        <div class="alert alert-warning">
+                            ⚠️ TK's Tavern is closed on Mondays.
+                        </div>
+                    `;
+                    return;
+                }
+            }
+
+            // Check for closed holidays
+            const holidayInfo = getHolidayInfo(currentDate);
+            if (holidayInfo && holidayInfo.closed) {
                 alertsContainer.innerHTML = `
                     <div class="alert alert-warning">
-                        ⚠️ TK's Tavern is closed on Mondays.
+                        ⚠️ ${holidayInfo.reason}
                     </div>
                 `;
                 return;
@@ -1228,11 +1369,29 @@
             const dateBookings = allBookings[currentDate] || {};
             const memberBookings = Object.values(dateBookings).filter(b => b.memberName === getCurrentMemberName());
 
+            // Check for early close
+            const earlyCloseInfo = getHolidayInfo(currentDate);
+            if (earlyCloseInfo && earlyCloseInfo.earlyClose) {
+                alertsContainer.innerHTML += `
+                    <div class="alert alert-warning" style="background: #fff3cd; border-color: #ff9800;">
+                        ⚠️ ${earlyCloseInfo.reason} - Last slot starts at 2:00 PM
+                    </div>
+                `;
+            }
+
             console.log('Rendering time slots for date:', currentDate);
             console.log('All bookings for this date:', dateBookings);
             console.log('Total bookings:', Object.keys(dateBookings).length);
 
             timeSlots.forEach((slot, index) => {
+                // Skip slots after 3pm on early close days
+                if (earlyCloseInfo && earlyCloseInfo.earlyClose) {
+                    const slotStartHour = parseInt(slot.start.split(':')[0]);
+                    if (slotStartHour >= 15) {
+                        return; // Skip this slot
+                    }
+                }
+                
                 // Add :00 seconds to match database format
                 const slotKey = `${slot.start}:00-${slot.end}:00`;
                 const booking = dateBookings[slotKey];
