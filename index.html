@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TK's Tavern Sim Booking</title>
+    <title>TK's Tavern Sim Booking v2.0</title>
     <style>
         * {
             margin: 0;
@@ -901,6 +901,9 @@
         
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        console.log('=== TK\'s Tavern Booking System v2.0 LOADED ===');
+        console.log('If you see this message, you have the latest version with 2-hour booking fixes');
+
         // Time slots: 8 AM to 10 PM in 1-hour increments
         const timeSlots = [
             { start: "08:00", end: "09:00", label: "8:00 AM - 9:00 AM" },
@@ -1404,6 +1407,7 @@
             console.log('Rendering time slots for date:', currentDate);
             console.log('All bookings for this date:', dateBookings);
             console.log('Total bookings:', Object.keys(dateBookings).length);
+            console.log('Booking keys:', Object.keys(dateBookings));
 
             timeSlots.forEach((slot, index) => {
                 // Skip slots after 3pm on early close days
@@ -1420,17 +1424,33 @@
                 const isBooked = !!booking;
                 const isMyBooking = isBooked && booking.memberName === getCurrentMemberName();
 
-                // Check if this slot is part of a 2-hour booking
-                let partOfTwoHourBooking = null;
-                if (!isBooked && index > 0) {
-                    const prevSlot = timeSlots[index - 1];
-                    const twoHourKey = `${prevSlot.start}:00-${slot.end}:00`;
+                // Check if this slot is the FIRST hour of a 2-hour booking
+                let isFirstHourOfTwoHour = null;
+                if (!isBooked && index < timeSlots.length - 1) {
+                    const nextSlot = timeSlots[index + 1];
+                    const twoHourKey = `${slot.start}:00-${nextSlot.end}:00`;
+                    console.log(`  Checking if first hour of 2h booking: ${twoHourKey}`);
                     if (dateBookings[twoHourKey]) {
-                        partOfTwoHourBooking = dateBookings[twoHourKey];
+                        isFirstHourOfTwoHour = dateBookings[twoHourKey];
+                        console.log(`  ✓ Found! This slot starts a 2-hour booking`);
                     }
                 }
 
-                console.log(`Slot ${slot.label}: key=${slotKey}, isBooked=${isBooked}, partOfTwoHour=${!!partOfTwoHourBooking}, booking=`, booking || partOfTwoHourBooking);
+                // Check if this slot is the SECOND hour of a 2-hour booking
+                let isSecondHourOfTwoHour = null;
+                if (!isBooked && index > 0) {
+                    const prevSlot = timeSlots[index - 1];
+                    const twoHourKey = `${prevSlot.start}:00-${slot.end}:00`;
+                    console.log(`  Checking if second hour of 2h booking: ${twoHourKey}`);
+                    if (dateBookings[twoHourKey]) {
+                        isSecondHourOfTwoHour = dateBookings[twoHourKey];
+                        console.log(`  ✓ Found! This slot ends a 2-hour booking`);
+                    }
+                }
+
+                const partOfTwoHourBooking = isFirstHourOfTwoHour || isSecondHourOfTwoHour;
+
+                console.log(`Slot ${slot.label}: key=${slotKey}, isBooked=${isBooked}, isFirstHour=${!!isFirstHourOfTwoHour}, isSecondHour=${!!isSecondHourOfTwoHour}, booking=`, booking || partOfTwoHourBooking);
 
                 const slotDiv = document.createElement('div');
                 slotDiv.className = `time-slot ${isBooked || partOfTwoHourBooking ? (isMyBooking || (partOfTwoHourBooking && partOfTwoHourBooking.memberName === getCurrentMemberName()) ? 'my-booking' : 'booked') : 'available'}`;
