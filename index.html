@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -689,10 +690,13 @@
         }
 
         function isDateBookable(dateStr) {
-            const date = new Date(dateStr);
-            date.setHours(0, 0, 0, 0);
+            // Parse date in local timezone
+            const dateParts = dateStr.split('-');
+            const date = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+            
             const today = new Date();
             today.setHours(0, 0, 0, 0);
+            
             const maxDate = getMaxBookingDate();
             
             if (date < today) return false;  // Can't book past dates
@@ -829,13 +833,17 @@
         }
 
         async function changeMonth(delta) {
-            currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() + delta);
+            const newMonth = new Date(currentCalendarMonth);
+            newMonth.setMonth(newMonth.getMonth() + delta);
+            currentCalendarMonth = newMonth;
             await loadBookings();
         }
 
         function openSlotsModal(dateStr) {
-            const date = new Date(dateStr);
-            date.setHours(0, 0, 0, 0);
+            // Parse date in local timezone to avoid timezone conversion issues
+            const dateParts = dateStr.split('-');
+            const date = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+            
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
@@ -859,8 +867,10 @@
             container.innerHTML = '';
             alertsContainer.innerHTML = '';
 
-            const date = new Date(currentDate);
-            date.setHours(0, 0, 0, 0);
+            // Parse date in local timezone
+            const dateParts = currentDate.split('-');
+            const date = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+            
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const isPastDate = date < today;
@@ -929,7 +939,13 @@
                 } else {
                     content += `<div class="slot-status">✅ Available</div>`;
                     const hasBookingToday = memberBookings.length > 0;
-                    const isPastDate = new Date(currentDate) < new Date(new Date().setHours(0,0,0,0));
+                    
+                    // Parse date in local timezone
+                    const dateParts = currentDate.split('-');
+                    const slotDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const isPastDate = slotDate < today;
                     const canBook = isDateBookable(currentDate);
                     
                     if (isPastDate) {
